@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Data in the USA</title>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:;base64,iVBORwOKGO=" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="page">
+      <h1>National Health Data</h1>
+      <p>Prabhjot Singh</p>
+      <p>
+        Data provided by the <a href="https://www.cdc.gov/">CDC</a>. Displayed
+        and processed using <a href="https://d3js.org/">D3</a>
+      </p>
+      <br />
+      <div class="chart" id="smoking-chart-container">
+        <h2>Average Smoking Percentage by State</h2>
+        <svg id="smoking-chart" width="1000" height="400"></svg>
+      </div>
+
+      <div class="chart" id="poverty-chart-container">
+        <h2>Average Poverty Rate by State</h2>
+        <svg id="poverty-chart" width="1000" height="400"></svg>
+      </div>
+    </div>
+
+    <!-- D3 bundle -->
+    <script src="js/d3.v6.min.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
