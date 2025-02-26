@@ -1,142 +1,104 @@
-// Load data using D3
-d3.csv("data/national_health_data_2024.csv").then(function (data) {
-  data.forEach((d) => {
-    d.poverty_perc = parseFloat(d.poverty_perc);
-    d.percent_smoking = parseFloat(d.percent_smoking);
-    d.display_name = d.display_name.replace(/"/g, "").trim();
+let householdIncomeData = [];
+let smokingData = [];
+
+// Load the CSV file using d3.csv
+d3.csv("data/national_health_data_2024.csv")
+  .then(function (data) {
+    data.forEach(function (row) {
+      let cnty_fips = row.cnty_fips;
+      let display_name = row.display_name;
+      let poverty_perc = parseFloat(row.poverty_perc); // Convert to float
+      let median_household_income = parseInt(row.median_household_income); // Convert to int
+      let education_less_than_high_school_percent = parseFloat(
+        row.education_less_than_high_school_percent
+      );
+      let air_quality = parseFloat(row.air_quality);
+      let park_access = parseFloat(row.park_access);
+      let percent_inactive = parseFloat(row.percent_inactive);
+      let percent_smoking = parseFloat(row.percent_smoking);
+      let urban_rural_status = row.urban_rural_status;
+      let elderly_percentage = parseFloat(row.elderly_percentage);
+      let number_of_hospitals = parseInt(row.number_of_hospitals);
+      let number_of_primary_care_physicians = parseInt(
+        row.number_of_primary_care_physicians
+      );
+      let percent_no_health_insurance = parseFloat(
+        row.percent_no_heath_insurance
+      );
+      let percent_high_blood_pressure = parseFloat(
+        row.percent_high_blood_pressure
+      );
+      let percent_coronary_heart_disease = parseFloat(
+        row.percent_coronary_heart_disease
+      );
+      let percent_stroke = parseFloat(row.percent_stroke);
+      let percent_high_cholesterol = parseFloat(row.percent_high_cholesterol);
+
+      // Create arrays for data i plan to use
+      householdIncomeData.push(median_household_income);
+      smokingData.push(percent_smoking);
+    });
+
+    createScatterplot(householdIncomeData, smokingData);
+  })
+  .catch(function (error) {
+    console.log("Error loading CSV file: ", error);
   });
 
-  createSmokingChart(data);
+function createScatterplot(householdIncomeData, smokingData) {
+  const margin = { top: 20, right: 30, bottom: 40, left: 60 }; // Adjust left margin for y-axis label
+  const width = 800 - margin.left - margin.right;
+  const height = 400 - margin.top - margin.bottom;
 
-  createPovertyChart(data);
-});
-
-function createSmokingChart(data) {
-  const svg = d3.select("#smoking-chart");
-  const margin = { top: 20, right: 30, bottom: 80, left: 70 };
-  const width = svg.attr("width") - margin.left - margin.right;
-  const height = svg.attr("height") - margin.top - margin.bottom;
-
-  const g = svg
+  const scatterSvg = d3
+    .select("#scatterplot-container")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
     .append("g")
-    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  const x = d3.scaleBand().range([0, width]).padding(0.1);
-  const y = d3.scaleLinear().range([height, 0]);
+  const xScatter = d3
+    .scaleLinear()
+    .domain([0, d3.max(householdIncomeData)]) // Scale based on max value of household income
+    .range([0, width]);
 
-  const stateData = d3
-    .groups(data, (d) => d.display_name.split(",")[1].trim())
-    .map(([key, values]) => ({
-      key: key,
-      value: d3.mean(values, (d) => d.percent_smoking),
-    }));
+  const yScatter = d3
+    .scaleLinear()
+    .domain([0, 100]) // Percent range from 0 to 100
+    .range([height, 0]);
 
-  x.domain(stateData.map((d) => d.key));
-  y.domain([0, d3.max(stateData, (d) => d.value)]);
-
-  g.append("g")
-    .selectAll(".bar")
-    .data(stateData)
+  scatterSvg
+    .selectAll("circle")
+    .data(householdIncomeData)
     .enter()
-    .append("rect")
-    .attr("class", "bar")
-    .attr("x", (d) => x(d.key))
-    .attr("width", x.bandwidth())
-    .attr("y", (d) => y(d.value))
-    .attr("height", (d) => height - y(d.value));
+    .append("circle")
+    .attr("cx", (d, i) => xScatter(d))
+    .attr("cy", (d, i) => yScatter(smokingData[i]))
+    .attr("r", 3)
+    .style("fill", "orange")
+    .style("opacity", 0.6);
 
-  // X-Axis
-  g.append("g")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x))
-    .selectAll("text")
-    .attr("transform", "rotate(-45)")
-    .style("text-anchor", "end");
+  scatterSvg
+    .append("g")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(xScatter));
 
-  // Y-Axis
-  g.append("g").call(d3.axisLeft(y));
+  scatterSvg.append("g").call(d3.axisLeft(yScatter));
 
-  // X-axis label
-  svg
+  scatterSvg
     .append("text")
-    .attr("x", width / 2 + margin.left)
-    .attr("y", height + margin.top + 50)
+    .attr("x", width / 2)
+    .attr("y", height + margin.bottom)
     .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .text("State");
+    .text("Median Household Income");
 
-  // Y-axis label
-  svg
+  // Y-axis label for Percent Smoking
+  scatterSvg
     .append("text")
     .attr("transform", "rotate(-90)")
-    .attr("x", -height / 2 - margin.top)
-    .attr("y", margin.left - 50)
+    .attr("x", -height / 2)
+    .attr("y", -margin.left + 20)
     .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .text("Average Smoking Percentage");
-}
-
-function createPovertyChart(data) {
-  const svg = d3.select("#poverty-chart");
-  const margin = { top: 20, right: 30, bottom: 80, left: 70 };
-  const width = svg.attr("width") - margin.left - margin.right;
-  const height = svg.attr("height") - margin.top - margin.bottom;
-
-  const g = svg
-    .append("g")
-    .attr("transform", `translate(${margin.left}, ${margin.top})`);
-
-  const x = d3.scaleBand().range([0, width]).padding(0.1);
-  const y = d3.scaleLinear().range([height, 0]);
-
-  const stateData = d3
-    .groups(data, (d) => d.display_name.split(",")[1].trim())
-    .map(([key, values]) => ({
-      key: key,
-      value: d3.mean(values, (d) => d.poverty_perc),
-    }));
-
-  x.domain(stateData.map((d) => d.key));
-  y.domain([0, d3.max(stateData, (d) => d.value)]);
-
-  g.append("g")
-    .selectAll(".bar")
-    .data(stateData)
-    .enter()
-    .append("rect")
-    .attr("class", "bar")
-    .attr("x", (d) => x(d.key))
-    .attr("width", x.bandwidth())
-    .attr("y", (d) => y(d.value))
-    .attr("height", (d) => height - y(d.value));
-
-  // X-Axis
-  g.append("g")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x))
-    .selectAll("text")
-    .attr("transform", "rotate(-45)")
-    .style("text-anchor", "end");
-
-  // Y-Axis
-  g.append("g").call(d3.axisLeft(y));
-
-  // X-axis label
-  svg
-    .append("text")
-    .attr("x", width / 2 + margin.left)
-    .attr("y", height + margin.top + 50)
-    .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .text("State");
-
-  // Y-axis label
-  svg
-    .append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -height / 2 - margin.top)
-    .attr("y", margin.left - 50)
-    .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .text("Poverty Rate (%)");
+    .text("Percent Smoking");
 }
