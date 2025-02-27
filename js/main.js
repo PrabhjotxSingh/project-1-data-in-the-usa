@@ -85,7 +85,7 @@ function updateCharts() {
 }
 
 // Function to update scatterplot
-function updateScatterplot(xAttr, yAttr) {
+function updateScatterplot(xAttr, yAttr, selectedData) {
   d3.select("#scatterplot-container").html(""); // Clear the previous chart
 
   const margin = { top: 20, right: 30, bottom: 80, left: 60 };
@@ -100,19 +100,22 @@ function updateScatterplot(xAttr, yAttr) {
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+  // Use selected data if it exists, otherwise use the full dataset
+  const data = selectedData && selectedData.length > 0 ? selectedData : dataset;
+
   const xScale = d3
     .scaleLinear()
-    .domain([0, d3.max(dataset, (d) => d[xAttr])])
+    .domain([0, d3.max(data, (d) => d[xAttr])])
     .range([0, width]);
 
   const yScale = d3
     .scaleLinear()
-    .domain([0, d3.max(dataset, (d) => d[yAttr])])
+    .domain([0, d3.max(data, (d) => d[yAttr])])
     .range([height, 0]);
 
   const circles = scatterSvg
     .selectAll("circle")
-    .data(dataset)
+    .data(data)
     .enter()
     .append("circle")
     .attr("cx", (d) => xScale(d[xAttr]))
@@ -135,8 +138,7 @@ function updateScatterplot(xAttr, yAttr) {
           `
           <div>${d.display_name}</div>
           <div>${xAttr.replace(/_/g, " ")}: ${d[xAttr]}</div>
-          <div>${yAttr.replace(/_/g, " ")}: ${d[yAttr]}</div>
-        `
+          <div>${yAttr.replace(/_/g, " ")}: ${d[yAttr]}</div>`
         )
         .style("left", `${event.pageX + 10}px`)
         .style("top", `${event.pageY - 30}px`);
@@ -179,10 +181,40 @@ function updateScatterplot(xAttr, yAttr) {
     .attr("y", -margin.left + 20)
     .attr("text-anchor", "middle")
     .text(yAttr.replace(/_/g, " "));
+
+  // Implement the brush interaction
+  const brush = d3
+    .brush()
+    .extent([
+      [0, 0],
+      [width, height],
+    ])
+    .on("start brush", function (event) {
+      const [[x0, y0], [x1, y1]] = event.selection;
+      // Filter dataset based on the brush selection
+      const selectedData = dataset.filter(
+        (d) =>
+          xScale(d[xAttr]) >= x0 &&
+          xScale(d[xAttr]) <= x1 &&
+          yScale(d[yAttr]) >= y0 &&
+          yScale(d[yAttr]) <= y1
+      );
+      // Highlight circles within the brushed region
+      circles
+        .style("fill", (d) =>
+          selectedData.includes(d) ? "orange" : "steelblue"
+        )
+        .style("opacity", (d) => (selectedData.includes(d) ? 1 : 0.6));
+
+      // Update other visualizations
+      updateBarChart(xAttr, yAttr, selectedData);
+    });
+
+  scatterSvg.append("g").call(brush);
 }
 
 // Function to create and update the bar chart
-function updateBarChart(xAttr, yAttr) {
+function updateBarChart(xAttr, yAttr, selectedData) {
   d3.select("#bar-chart-container").html(""); // Clear previous chart
 
   const margin = { top: 20, right: 30, bottom: 80, left: 60 };
@@ -197,20 +229,16 @@ function updateBarChart(xAttr, yAttr) {
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  // Filter dataset to remove undefined/null values for selected attributes
-  let filteredData = dataset.filter(
-    (d) => d[xAttr] !== undefined && d[yAttr] !== undefined
-  );
+  // Use selected data if it exists, otherwise use the full dataset
+  let filteredData =
+    selectedData && selectedData.length > 0 ? selectedData : dataset;
 
-  // Determine if xAttr is numerical
   const isNumeric = typeof filteredData[0][xAttr] === "number";
 
-  // Sort data in ascending order if xAttr is numeric
   if (isNumeric) {
     filteredData = filteredData.sort((a, b) => a[xAttr] - b[xAttr]);
   }
 
-  // Define x-axis scale
   const xScale = isNumeric
     ? d3
         .scaleLinear()
@@ -221,15 +249,16 @@ function updateBarChart(xAttr, yAttr) {
         .range([0, width])
     : d3
         .scaleBand()
-        .domain(filteredData.map((d) => d[xAttr])) // For categorical data
+        .domain(filteredData.map((d) => d[xAttr]))
         .range([0, width])
         .padding(0.2);
 
-  // Define y-axis scale
-  const yMax = d3.max(filteredData, (d) => d[yAttr]);
-  const yScale = d3.scaleLinear().domain([0, yMax]).nice().range([height, 0]);
+  const yScale = d3
+    .scaleLinear()
+    .domain([0, d3.max(filteredData, (d) => d[yAttr])])
+    .nice()
+    .range([height, 0]);
 
-  // Create bars
   const bars = barSvg
     .selectAll(".bar")
     .data(filteredData)
@@ -238,18 +267,15 @@ function updateBarChart(xAttr, yAttr) {
     .attr("class", "bar")
     .attr("x", (d) => xScale(d[xAttr]))
     .attr("y", (d) => yScale(d[yAttr]))
-    .attr("width", isNumeric ? 5 : xScale.bandwidth()) // Narrower bars for numeric x-axis
+    .attr("width", isNumeric ? 5 : xScale.bandwidth())
     .attr("height", (d) => height - yScale(d[yAttr]))
     .style("fill", "steelblue");
 
-  // Tooltip setup
-  const tooltip = d3.select(".tooltip");
-
-  // Hover effect: Show tooltip
   bars
     .on("mouseover", function (event, d) {
       // Show the tooltip
-      tooltip
+      d3
+        .select(".tooltip")
         .style("visibility", "visible")
         .style("left", event.pageX + 10 + "px")
         .style("top", event.pageY - 30 + "px").html(`
@@ -262,34 +288,19 @@ function updateBarChart(xAttr, yAttr) {
       d3.select(this).style("stroke", "black").style("stroke-width", 2);
     })
     .on("mouseout", function () {
-      // Hide the tooltip
-      tooltip.style("visibility", "hidden");
-
-      // Remove stroke from bar
+      d3.select(".tooltip").style("visibility", "hidden");
       d3.select(this).style("stroke", "none");
-    })
-    .on("click", function (event, d) {
-      const countyName = d.display_name;
-      const xValue = d[xAttr];
-      const yValue = d[yAttr];
-      alert(
-        `County: ${countyName}\n${xAttr.replace(
-          /_/g,
-          " "
-        )}: ${xValue}\n${yAttr.replace(/_/g, " ")}: ${yValue}`
-      );
     });
 
-  // Create X-axis
   const xAxis = isNumeric
-    ? d3.axisBottom(xScale).ticks(5) // Show fewer labels (generalized)
+    ? d3.axisBottom(xScale).ticks(5)
     : d3
         .axisBottom(xScale)
         .tickValues(
           xScale
             .domain()
             .filter((_, i) => i % Math.ceil(filteredData.length / 5) === 0)
-        ); // Show only every few labels for categorical values
+        );
 
   barSvg
     .append("g")
@@ -300,7 +311,6 @@ function updateBarChart(xAttr, yAttr) {
     .style("font-size", "10px")
     .style("transform", "rotate(-45deg)");
 
-  // Create Y-axis
   barSvg.append("g").call(d3.axisLeft(yScale));
 
   // Add labels
@@ -318,6 +328,37 @@ function updateBarChart(xAttr, yAttr) {
     .attr("y", -margin.left + 20)
     .attr("text-anchor", "middle")
     .text(yAttr.replace(/_/g, " "));
+
+  // Implement the brush interaction
+  const brush = d3
+    .brush()
+    .extent([
+      [0, 0],
+      [width, height],
+    ])
+    .on("start brush", function (event) {
+      const [[x0, y0], [x1, y1]] = event.selection;
+      // Filter dataset based on the brush selection
+      const brushedData = dataset.filter(
+        (d) =>
+          xScale(d[xAttr]) >= x0 &&
+          xScale(d[xAttr]) <= x1 &&
+          yScale(d[yAttr]) >= y0 &&
+          yScale(d[yAttr]) <= y1
+      );
+      // Highlight bars within the brushed region
+      bars
+        .style("fill", (d) =>
+          brushedData.includes(d) ? "orange" : "steelblue"
+        )
+        .style("opacity", (d) => (brushedData.includes(d) ? 1 : 0.6));
+
+      // Update scatterplot based on brushed data
+      updateScatterplot(xAttr, yAttr, brushedData);
+    });
+
+  // Add the brush to the bar chart SVG
+  barSvg.append("g").call(brush);
 }
 
 /**
