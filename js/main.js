@@ -81,6 +81,8 @@ function updateCharts() {
   // Update both charts with the new values
   updateScatterplot(xValue, yValue);
   updateBarChart(xValue, yValue);
+  createMapX(xValue);
+  createMapY(yValue);
 }
 
 // Function to update scatterplot
@@ -242,4 +244,96 @@ function updateBarChart(xAttr, yAttr) {
     .attr("y", -margin.left + 20)
     .attr("text-anchor", "middle")
     .text(yAttr.replace(/_/g, " "));
+}
+
+/**
+ * Load TopoJSON data of the world and the data of the world wonders
+ */
+
+function createMapX(selected) {
+  // Clear previous map
+  d3.select(".viz").select("svg").remove();
+
+  Promise.all([
+    d3.json("data/counties-10m.json"),
+    d3.csv("data/national_health_data_2024.csv"),
+  ])
+    .then((data) => {
+      const geoData = data[0];
+      const health_data = data[1];
+
+      // Combine both datasets by adding the population density to the TopoJSON file
+      console.log(geoData);
+      geoData.objects.counties.geometries.forEach((d) => {
+        console.log(d);
+        for (let i = 0; i < health_data.length; i++) {
+          if (d.id === health_data[i].cnty_fips) {
+            d.properties.pop = +health_data[i][selected];
+          }
+        }
+      });
+
+      const choroplethMap = new ChoroplethMap(
+        {
+          parentElement: ".viz",
+        },
+        geoData
+      );
+    })
+    .catch((error) => console.error(error));
+}
+
+function createMapY(selected) {
+  // Clear previous map
+  d3.select(".viz2").select("svg").remove();
+
+  Promise.all([
+    d3.json("data/counties-10m.json"),
+    d3.csv("data/national_health_data_2024.csv"),
+  ])
+    .then((data) => {
+      const geoData = data[0];
+      const health_data = data[1];
+
+      // Combine both datasets by adding the population density to the TopoJSON file
+      console.log(geoData);
+      geoData.objects.counties.geometries.forEach((d) => {
+        console.log(d);
+        for (let i = 0; i < health_data.length; i++) {
+          if (d.id === health_data[i].cnty_fips) {
+            d.properties.pop = +health_data[i][selected];
+          }
+        }
+      });
+
+      const choroplethMap = new ChoroplethMap(
+        {
+          parentElement: ".viz2",
+        },
+        geoData
+      );
+    })
+    .catch((error) => console.error(error));
+}
+
+function getColorScale(attribute) {
+  const colorScales = {
+    median_household_income: d3
+      .scaleSequential(d3.interpolateBlues)
+      .domain([20000, 100000]),
+    poverty_perc: d3.scaleSequential(d3.interpolateReds).domain([0, 50]),
+    education_less_than_high_school_percent: d3
+      .scaleSequential(d3.interpolateGreens)
+      .domain([0, 30]),
+    percent_smoking: d3.scaleSequential(d3.interpolatePurples).domain([0, 40]),
+    percent_inactive: d3.scaleSequential(d3.interpolateOranges).domain([0, 40]),
+    percent_coronary_heart_disease: d3
+      .scaleSequential(d3.interpolateYlGnBu)
+      .domain([0, 15]),
+  };
+
+  return (
+    colorScales[attribute] ||
+    d3.scaleSequential(d3.interpolateBlues).domain([0, 100])
+  );
 }
