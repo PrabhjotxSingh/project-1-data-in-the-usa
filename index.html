@@ -15,14 +15,30 @@
   <body>
     <div class="page">
       <h1>National Health Data</h1>
+      <h2>Concerning Smoking & It's Causes/Effects</h2>
       <p>Prabhjot Singh</p>
       <p>
         Data provided by the <a href="https://www.cdc.gov/">CDC</a>. Displayed
         and processed using <a href="https://d3js.org/">D3</a>
       </p>
+      <h4>Select Attributes to Compare</h4>
+      <label for="x-select">X-axis:</label>
+      <select id="x-select"></select>
+      <label for="y-select">Y-axis:</label>
+      <select id="y-select"></select>
       <br />
-      <h4>Percentage Smoking vs Median Household Income</h4>
+      <h4>Scatterplot</h4>
       <div id="scatterplot-container"></div>
+      <h4>Bar Chart</h4>
+      <div id="bar-chart-container"></div>
+      <h2>X-Axis Map</h2>
+      <p>Map Here</p>
+      <h2>Y-Axis Map</h2>
+      <p>Map Here</p>
+      <br />
+    </div>
+    <!-- Closing the div.page -->
+
     <!-- D3 bundle -->
     <script src="js/d3.v6.min.js"></script>
     <script src="js/main.js"></script>
