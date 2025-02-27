@@ -121,13 +121,30 @@ function updateScatterplot(xAttr, yAttr) {
     .style("fill", "steelblue")
     .style("opacity", 0.6);
 
-  // Hover effect: Add stroke on hover
+  // Tooltip element
+  const tooltip = d3.select(".tooltip");
+
+  // Hover effect: Add stroke on hover and show tooltip
   circles
     .on("mouseover", function (event, d) {
       d3.select(this).style("stroke", "black").style("stroke-width", 2);
+
+      tooltip
+        .style("visibility", "visible")
+        .html(
+          `
+          <div>${d.display_name}</div>
+          <div>${xAttr.replace(/_/g, " ")}: ${d[xAttr]}</div>
+          <div>${yAttr.replace(/_/g, " ")}: ${d[yAttr]}</div>
+        `
+        )
+        .style("left", `${event.pageX + 10}px`)
+        .style("top", `${event.pageY - 30}px`);
     })
     .on("mouseout", function () {
       d3.select(this).style("stroke", "none");
+
+      tooltip.style("visibility", "hidden");
     })
     .on("click", function (event, d) {
       const countyName = d.display_name;
@@ -225,12 +242,30 @@ function updateBarChart(xAttr, yAttr) {
     .attr("height", (d) => height - yScale(d[yAttr]))
     .style("fill", "steelblue");
 
-  // Hover effect: Add stroke on hover
+  // Tooltip setup
+  const tooltip = d3.select(".tooltip");
+
+  // Hover effect: Show tooltip
   bars
-    .on("mouseover", function () {
+    .on("mouseover", function (event, d) {
+      // Show the tooltip
+      tooltip
+        .style("visibility", "visible")
+        .style("left", event.pageX + 10 + "px")
+        .style("top", event.pageY - 30 + "px").html(`
+          <div>County: ${d.display_name}</div>
+          <div>${xAttr.replace(/_/g, " ")}: ${d[xAttr]}</div>
+          <div>${yAttr.replace(/_/g, " ")}: ${d[yAttr]}</div>
+        `);
+
+      // Add stroke to bar
       d3.select(this).style("stroke", "black").style("stroke-width", 2);
     })
     .on("mouseout", function () {
+      // Hide the tooltip
+      tooltip.style("visibility", "hidden");
+
+      // Remove stroke from bar
       d3.select(this).style("stroke", "none");
     })
     .on("click", function (event, d) {
@@ -244,6 +279,7 @@ function updateBarChart(xAttr, yAttr) {
         )}: ${xValue}\n${yAttr.replace(/_/g, " ")}: ${yValue}`
       );
     });
+
   // Create X-axis
   const xAxis = isNumeric
     ? d3.axisBottom(xScale).ticks(5) // Show fewer labels (generalized)
