@@ -50,7 +50,7 @@ body {
   fill: orange;
 }
 
-#tooltip {
+.tooltip {
   position: absolute;
   display: none;
   background: #fff;
@@ -61,6 +61,7 @@ body {
   padding: 8px;
   min-width: 160px;
   color: #333;
+  z-index: 1000; /* Ensure it's above other elements */
 }
 .tooltip-title {
   color: #000;

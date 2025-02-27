@@ -1,4 +1,3 @@
-// Load the CSV file using d3.csv
 d3.csv("data/national_health_data_2024.csv").then(function (data) {
   dataset = data.map((row) => ({
     cnty_fips: row.cnty_fips,
@@ -111,7 +110,7 @@ function updateScatterplot(xAttr, yAttr) {
     .domain([0, d3.max(dataset, (d) => d[yAttr])])
     .range([height, 0]);
 
-  scatterSvg
+  const circles = scatterSvg
     .selectAll("circle")
     .data(dataset)
     .enter()
@@ -121,6 +120,26 @@ function updateScatterplot(xAttr, yAttr) {
     .attr("r", 3)
     .style("fill", "steelblue")
     .style("opacity", 0.6);
+
+  // Hover effect: Add stroke on hover
+  circles
+    .on("mouseover", function (event, d) {
+      d3.select(this).style("stroke", "black").style("stroke-width", 2);
+    })
+    .on("mouseout", function () {
+      d3.select(this).style("stroke", "none");
+    })
+    .on("click", function (event, d) {
+      const countyName = d.display_name;
+      const xValue = d[xAttr];
+      const yValue = d[yAttr];
+      alert(
+        `County: ${countyName}\n${xAttr.replace(
+          /_/g,
+          " "
+        )}: ${xValue}\n${yAttr.replace(/_/g, " ")}: ${yValue}`
+      );
+    });
 
   scatterSvg
     .append("g")
@@ -194,7 +213,7 @@ function updateBarChart(xAttr, yAttr) {
   const yScale = d3.scaleLinear().domain([0, yMax]).nice().range([height, 0]);
 
   // Create bars
-  barSvg
+  const bars = barSvg
     .selectAll(".bar")
     .data(filteredData)
     .enter()
@@ -206,6 +225,25 @@ function updateBarChart(xAttr, yAttr) {
     .attr("height", (d) => height - yScale(d[yAttr]))
     .style("fill", "steelblue");
 
+  // Hover effect: Add stroke on hover
+  bars
+    .on("mouseover", function () {
+      d3.select(this).style("stroke", "black").style("stroke-width", 2);
+    })
+    .on("mouseout", function () {
+      d3.select(this).style("stroke", "none");
+    })
+    .on("click", function (event, d) {
+      const countyName = d.display_name;
+      const xValue = d[xAttr];
+      const yValue = d[yAttr];
+      alert(
+        `County: ${countyName}\n${xAttr.replace(
+          /_/g,
+          " "
+        )}: ${xValue}\n${yAttr.replace(/_/g, " ")}: ${yValue}`
+      );
+    });
   // Create X-axis
   const xAxis = isNumeric
     ? d3.axisBottom(xScale).ticks(5) // Show fewer labels (generalized)
@@ -269,6 +307,8 @@ function createMapX(selected) {
         for (let i = 0; i < health_data.length; i++) {
           if (d.id === health_data[i].cnty_fips) {
             d.properties.pop = +health_data[i][selected];
+            d.properties.selectedData = +health_data[i][selected];
+            d.properties.display_name = health_data[i].display_name;
           }
         }
       });
@@ -279,6 +319,31 @@ function createMapX(selected) {
         },
         geoData
       );
+
+      // Add hover interaction
+      choroplethMap.svg
+        .selectAll("path")
+        .on("mouseover", function (event, d) {
+          const countyName = d.properties.display_name;
+          const value = d.properties.selectedData;
+          d3.select(this).style("stroke", "black").style("stroke-width", 2);
+
+          // Show tooltip
+          d3.select(".tooltip")
+            .html(`<strong>${countyName}</strong><br>Value: ${value}`)
+            .style("left", event.pageX + "px")
+            .style("top", event.pageY - 28 + "px")
+            .style("visibility", "visible");
+        })
+        .on("mouseout", function () {
+          d3.select(this).style("stroke", "none");
+          d3.select(".tooltip").style("visibility", "hidden");
+        })
+        .on("click", function (event, d) {
+          const countyName = d.properties.display_name;
+          const value = d.properties.selectedData;
+          alert(`County: ${countyName}\nValue: ${value}`);
+        });
     })
     .catch((error) => console.error(error));
 }
@@ -302,6 +367,8 @@ function createMapY(selected) {
         for (let i = 0; i < health_data.length; i++) {
           if (d.id === health_data[i].cnty_fips) {
             d.properties.pop = +health_data[i][selected];
+            d.properties.selectedData = +health_data[i][selected];
+            d.properties.display_name = health_data[i].display_name;
           }
         }
       });
@@ -312,28 +379,31 @@ function createMapY(selected) {
         },
         geoData
       );
+
+      // Add hover interaction
+      choroplethMap.svg
+        .selectAll("path")
+        .on("mouseover", function (event, d) {
+          const countyName = d.properties.display_name;
+          const value = d.properties.selectedData;
+          d3.select(this).style("stroke", "black").style("stroke-width", 2);
+
+          // Show tooltip
+          d3.select(".tooltip")
+            .html(`<strong>${countyName}</strong><br>Value: ${value}`)
+            .style("left", event.pageX + "px")
+            .style("top", event.pageY - 28 + "px")
+            .style("visibility", "visible");
+        })
+        .on("mouseout", function () {
+          d3.select(this).style("stroke", "none");
+          d3.select(".tooltip").style("visibility", "hidden");
+        })
+        .on("click", function (event, d) {
+          const countyName = d.properties.display_name;
+          const value = d.properties.selectedData;
+          alert(`County: ${countyName}\nValue: ${value}`);
+        });
     })
     .catch((error) => console.error(error));
-}
-
-function getColorScale(attribute) {
-  const colorScales = {
-    median_household_income: d3
-      .scaleSequential(d3.interpolateBlues)
-      .domain([20000, 100000]),
-    poverty_perc: d3.scaleSequential(d3.interpolateReds).domain([0, 50]),
-    education_less_than_high_school_percent: d3
-      .scaleSequential(d3.interpolateGreens)
-      .domain([0, 30]),
-    percent_smoking: d3.scaleSequential(d3.interpolatePurples).domain([0, 40]),
-    percent_inactive: d3.scaleSequential(d3.interpolateOranges).domain([0, 40]),
-    percent_coronary_heart_disease: d3
-      .scaleSequential(d3.interpolateYlGnBu)
-      .domain([0, 15]),
-  };
-
-  return (
-    colorScales[attribute] ||
-    d3.scaleSequential(d3.interpolateBlues).domain([0, 100])
-  );
 }
